@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD 表格閱讀器</title>
+<style>
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel2: #1e222b;
+  --border: #2a2f3a;
+  --text: #d6dae3;
+  --text-dim: #8b93a3;
+  --accent: #4da3ff;
+  --accent-dim: #2a5f99;
+  --header-bg: #232834;
+  --hover: #252b38;
+  --stripe: #161a21;
+}
+[data-theme="light"] {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --panel2: #f0f2f5;
+  --border: #d5dae2;
+  --text: #1c2028;
+  --text-dim: #677084;
+  --accent: #1a6ed8;
+  --accent-dim: #bcd7f7;
+  --header-bg: #e8ebf1;
+  --hover: #eef1f6;
+  --stripe: #fafbfc;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+#fileName {
+  color: var(--text-dim);
+  font-size: 13px;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+button {
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover { background: var(--hover); border-color: var(--accent-dim); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-dim); }
+#searchBox {
+  flex: 1;
+  min-width: 160px;
+  max-width: 420px;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+#searchBox:focus { outline: none; border-color: var(--accent); }
+#stats { font-size: 12px; color: var(--text-dim); margin-left: auto; white-space: nowrap; }
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+#dropZone {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 2;
+  transition: border-color .2s, background .2s;
+}
+#dropZone.dragover {
+  border-color: var(--accent);
+  background: var(--panel);
+  color: var(--accent);
+}
+#dropZone.has-file { border-style: none; display: block; padding: 0; }
+.table-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+/* 單表格時填滿視窗；多表格時按內容自然高度（避免小表格佔滿留白） */
+.table-section.single { min-height: 100%; }
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.table-title { font-weight: 600; font-size: 14px; }
+.table-rows { font-size: 12px; color: var(--text-dim); }
+.table-toolbar .spacer { flex: 1; }
+.view-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.table-wrap {
+  overflow: auto;
+  flex: 1;
+  position: relative;
+}
+table.md-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 13px;
+}
+.md-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--header-bg);
+  color: var(--text);
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--accent-dim);
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+.md-table th:hover { background: var(--hover); }
+.md-table th .arrow { font-size: 11px; margin-left: 4px; color: var(--accent); }
+.md-table th .resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 3;
+}
+.md-table th { position: relative; cursor: grab; }
+.md-table th:active { cursor: grabbing; }
+.md-table th.drag-over { border-left: 3px solid var(--accent); border-right: 3px solid var(--accent); }
+.md-table th.dragging { opacity: 0.5; }
+.md-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+  max-width: 0;
+}
+.md-table tbody tr:nth-child(even) { background: var(--stripe); }
+.md-table tbody tr:hover { background: var(--hover); }
+.md-table tr.frozen-first th:first-child,
+.md-table.frozen-first td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--header-bg);
+  z-index: 1;
+  box-shadow: 1px 0 0 var(--border);
+}
+.md-table.frozen-first td:first-child { background: var(--panel2); }
+.md-table.frozen-first tbody tr:nth-child(even) td:first-child { background: var(--stripe); }
+.md-table.frozen-first tbody tr:hover td:first-child { background: var(--hover); }
+
+/* 卡片視圖（Notion 數據庫風） */
+.card-view {
+  display: none;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  padding: 14px;
+  flex: 1;
+  overflow-y: auto;
+  align-content: start;
+}
+.card-view.show { display: grid; }
+.card {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.card .card-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  word-break: break-all;
+}
+.card .card-row {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+.card .card-row .k {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  min-width: 90px;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card .card-row .v { word-break: break-all; color: var(--text); }
+.table-wrap.hide { display: none; }
+
+/* 欄位控制面板 */
+.col-panel {
+  position: absolute;
+  top: 44px;
+  right: 14px;
+  z-index: 20;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  padding: 10px;
+  min-width: 220px;
+  max-height: 60vh;
+  overflow-y: auto;
+  display: none;
+}
+.col-panel.show { display: block; }
+.col-panel .panel-title {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+.col-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.col-panel label:hover { background: var(--hover); }
+.col-panel input[type="checkbox"] { accent-color: var(--accent); }
+.col-panel .panel-foot {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 6px;
+}
+.col-panel .panel-foot button { font-size: 12px; padding: 3px 8px; }
+
+/* 空狀態 */
+.empty-hint {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-dim);
+}
+footer {
+  padding: 6px 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 MD 表格閱讀器</h1>
+  <button id="openBtn" class="primary">打開 md 檔</button>
+  <input type="file" id="fileInput" accept=".md,.markdown,.txt,text/markdown" hidden>
+  <span id="fileName"></span>
+  <input type="search" id="searchBox" placeholder="搜尋表格內容…（Notion 式過濾）" disabled>
+  <select id="searchScope" title="搜尋範圍" disabled>
+    <option value="">🔍 全部欄位</option>
+  </select>
+  <button id="tableBtn" title="表格顯示控制">⚙ 表格</button>
+  <div id="tablePanel" class="col-panel" style="top:48px; left:16px; right:auto;"></div>
+  <button id="freezeBtn" title="凍結首欄">📌 首欄</button>
+  <button id="themeBtn" title="切換深淺色">🌙</button>
+  <span id="stats"></span>
+</header>
+<main>
+  <div id="dropZone">
+    <div>
+      <div style="font-size:28px;margin-bottom:10px;">📄</div>
+      把 md 檔拖到這裡<br>
+      <span style="font-size:14px;">或點「打開 md 檔」按鈕</span>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const fileNameEl = document.getElementById("fileName");
+const searchBox = document.getElementById("searchBox");
+const searchScope = document.getElementById("searchScope");
+const statsEl = document.getElementById("stats");
+const freezeBtn = document.getElementById("freezeBtn");
+const themeBtn = document.getElementById("themeBtn");
+const tableBtn = document.getElementById("tableBtn");
+const tablePanel = document.getElementById("tablePanel");
+
+let tables = [];        // 解析出的所有表格 {name, headers, rows}
+let currentFile = "";
+let frozen = false;
+let sortState = {};     // 每個表格的排序狀態 {tableIdx: {col, dir}}
+let viewStates = [];    // 每個表格的視圖狀態 {colOrder: [], hidden: Set()}
+let suppressClick = false; // 欄寬拖拽後抑制誤觸發的 click（防止拖完觸發排序）
+let hiddenTables = new Set(); // 被隱藏的表格索引
+
+// 表格 idx 的可見欄位（按 colOrder 過濾 hidden）
+function visibleCols(idx) {
+  const vs = viewStates[idx];
+  if (!vs) return [];
+  return vs.colOrder.filter(c => !vs.hidden.has(c));
+}
+function initViewState(t, idx) {
+  viewStates[idx] = {
+    colOrder: t.headers.map((_, i) => i),
+    hidden: new Set()
+  };
+}
+
+// ---------- 主題 ----------
+function initTheme() {
+  const saved = localStorage.getItem("mdtable-theme");
+  if (saved === "light") document.body.setAttribute("data-theme", "light");
+}
+themeBtn.addEventListener("click", () => {
+  const isLight = document.body.getAttribute("data-theme") === "light";
+  if (isLight) {
+    document.body.removeAttribute("data-theme");
+    localStorage.setItem("mdtable-theme", "dark");
+    themeBtn.textContent = "🌙";
+  } else {
+    document.body.setAttribute("data-theme", "light");
+    localStorage.setItem("mdtable-theme", "light");
+    themeBtn.textContent = "☀️";
+  }
+});
+
+// ---------- 檔案載入 ----------
+document.getElementById("openBtn").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  const f = fileInput.files[0];
+  if (f) loadFile(f);
+});
+
+["dragover", "dragenter"].forEach(ev => {
+  dropZone.addEventListener(ev, e => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  });
+});
+["dragleave", "drop"].forEach(ev => {
+  dropZone.addEventListener(ev, e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+  });
+});
+dropZone.addEventListener("drop", e => {
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    currentFile = file.name;
+    fileNameEl.textContent = "📄 " + file.name;
+    tables = parseMarkdownTables(reader.result);
+    renderAll();
+    searchBox.disabled = false;
+    searchScope.disabled = false;
+    searchBox.value = "";
+    searchScope.value = "";
+    fillSearchScope();
+    dropZone.classList.add("has-file");
+    statsEl.textContent = `${tables.length} 個表格`;
+    updateStats();
+  };
+  reader.readAsText(file, "utf-8");
+}
+
+function updateStats() {
+  const shown = tables.length - hiddenTables.size;
+  statsEl.textContent = hiddenTables.size > 0
+    ? `${shown}/${tables.length} 個表格`
+    : `${tables.length} 個表格`;
+}
+
+// 填充搜尋範圍（所有表格欄名聯集）
+function fillSearchScope() {
+  searchScope.innerHTML = '<option value="">🔍 全部欄位</option>';
+  const names = [];
+  tables.forEach(t => {
+    t.headers.forEach((h, ci) => {
+      const key = h || `欄 ${ci + 1}`;
+      if (!names.includes(key)) names.push(key);
+    });
+  });
+  names.forEach(n => {
+    const opt = document.createElement("option");
+    opt.value = n;
+    opt.textContent = "▸ " + n;
+    searchScope.appendChild(opt);
+  });
+}
+
+// 某欄名在表格 idx 中的原始欄索引（沒有就 -1）
+function colIndexByName(idx, name) {
+  const t = tables[idx];
+  for (let i = 0; i < t.headers.length; i++) {
+    if ((t.headers[i] || `欄 ${i + 1}`) === name) return i;
+  }
+  return -1;
+}
+
+// ---------- Markdown 表格解析 ----------
+function parseMarkdownTables(text) {
+  const lines = text.split(/\r?\n/);
+  const result = [];
+  let i = 0;
+  let tableIdx = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (isTableRow(line)) {
+      // 找最近的標題（往前找 # 標題，最多 5 行）
+      let name = `表格 ${++tableIdx}`;
+      for (let j = i - 1; j >= Math.max(0, i - 6); j--) {
+        const m = lines[j].match(/^#{1,6}\s+(.+?)\s*$/);
+        if (m) { name = m[1].trim(); break; }
+        if (lines[j].trim() !== "") break;
+      }
+      // 收集表格行
+      const rows = [];
+      while (i < lines.length && isTableRow(lines[i])) {
+        rows.push(parseTableRow(lines[i]));
+        i++;
+      }
+      if (rows.length >= 2) {
+        // rows[0] = 表頭, rows[1] = 分隔行(|---|)
+        if (isSeparatorRow(rows[1])) {
+          result.push({
+            name,
+            headers: rows[0],
+            rows: rows.slice(2).filter(r => r.some(c => c.trim() !== ""))
+          });
+        }
+      }
+    } else {
+      i++;
+    }
+  }
+  return result;
+}
+
+function isTableRow(line) {
+  return /^\s*\|.*\|\s*$/.test(line) && line.includes("|");
+}
+function parseTableRow(line) {
+  let s = line.trim();
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|")) s = s.slice(0, -1);
+  return s.split("|").map(c => c.trim());
+}
+function isSeparatorRow(row) {
+  return row.length > 0 && row.every(c => /^:?-{2,}:?$/.test(c.replace(/\s/g, "")));
+}
+
+// ---------- 渲染 ----------
+function renderAll() {
+  dropZone.innerHTML = "";
+  sortState = {};
+  viewStates = [];
+  hiddenTables.clear();
+  tables.forEach((t, idx) => {
+    initViewState(t, idx);
+    const section = document.createElement("div");
+    section.className = "table-section";
+    section.dataset.idx = idx;
+    section.style.position = "relative";
+    // 單表格時填滿視窗（高胖帥）；多表格時自然高度（小表格不佔滿留白）
+    if (tables.length === 1) section.classList.add("single");
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "table-toolbar";
+    const title = document.createElement("span");
+    title.className = "table-title";
+    title.textContent = t.name;
+    const rowsInfo = document.createElement("span");
+    rowsInfo.className = "table-rows";
+    rowsInfo.textContent = `${t.headers.length} 欄 × ${t.rows.length} 行`;
+    const spacer = document.createElement("span");
+    spacer.className = "spacer";
+    const viewBtn = document.createElement("button");
+    viewBtn.textContent = "表格";
+    viewBtn.className = "view-btn active";
+    viewBtn.dataset.view = "table";
+    const cardBtn = document.createElement("button");
+    cardBtn.textContent = "卡片";
+    cardBtn.className = "view-btn";
+    cardBtn.dataset.view = "card";
+    viewBtn.addEventListener("click", () => setView(idx, "table", viewBtn, cardBtn));
+    cardBtn.addEventListener("click", () => setView(idx, "card", viewBtn, cardBtn));
+    // 欄位控制按鈕 + 面板
+    const colBtn = document.createElement("button");
+    colBtn.textContent = "⚙ 欄位";
+    const colPanel = document.createElement("div");
+    colPanel.className = "col-panel";
+    colBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      buildColPanel(idx, colPanel);
+      colPanel.classList.toggle("show");
+    });
+    toolbar.append(title, rowsInfo, spacer, viewBtn, cardBtn, colBtn);
+    section.appendChild(toolbar);
+    section.appendChild(colPanel);
+    // 點外面關面板
+    section.addEventListener("click", e => {
+      if (!e.target.closest(".col-panel") && e.target !== colBtn) {
+        colPanel.classList.remove("show");
+      }
+    });
+
+    // 表格視圖
+    const wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    wrap.appendChild(buildTable(t, idx));
+    section.appendChild(wrap);
+
+    // 卡片視圖
+    const cards = document.createElement("div");
+    cards.className = "card-view";
+    cards.appendChild(buildCards(t, idx));
+    section.appendChild(cards);
+
+    dropZone.appendChild(section);
+  });
+  // 應用表格隱藏
+  hiddenTables.forEach(idx => {
+    const sec = dropZone.querySelector(`.table-section[data-idx="${idx}"]`);
+    if (sec) sec.style.display = "none";
+  });
+  updateStats();
+  applyFilter("");
+}
+
+function buildTable(t, idx) {
+  const vis = visibleCols(idx);
+  const table = document.createElement("table");
+  table.className = "md-table";
+  if (frozen) table.classList.add("frozen-first");
+
+  const thead = document.createElement("thead");
+  const tr = document.createElement("tr");
+  vis.forEach((ci, pos) => {
+    const h = t.headers[ci] !== undefined ? t.headers[ci] : `欄 ${ci + 1}`;
+    const th = document.createElement("th");
+    th.dataset.col = ci;
+    th.dataset.pos = pos;
+    th.textContent = h;
+    th.title = h;
+    // 智慧欄寬：按表頭文字長度給初始權重（短欄窄、長欄寬）
+    const w = Math.min(220, Math.max(64, h.length * 15 + 26));
+    th.style.width = w + "px";
+    const arrow = document.createElement("span");
+    arrow.className = "arrow";
+    th.appendChild(arrow);
+    th.addEventListener("click", () => {
+      if (suppressClick) return; // 欄寬拖拽結束後的 click 不觸發排序
+      sortTable(idx, ci, th);
+    });
+    // 欄寬拖拽
+    const resizer = document.createElement("span");
+    resizer.className = "resizer";
+    resizer.addEventListener("mousedown", e => startResize(e, th));
+    th.appendChild(resizer);
+    // 欄拖拽排序（HTML5 DnD）
+    th.draggable = true;
+    th.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", String(ci));
+      th.classList.add("dragging");
+    });
+    th.addEventListener("dragend", () => {
+      th.classList.remove("dragging");
+      table.querySelectorAll("th").forEach(x => x.classList.remove("drag-over"));
+    });
+    th.addEventListener("dragover", e => {
+      e.preventDefault();
+      th.classList.add("drag-over");
+    });
+    th.addEventListener("dragleave", () => th.classList.remove("drag-over"));
+    th.addEventListener("drop", e => {
+      e.preventDefault();
+      th.classList.remove("drag-over");
+      const srcCol = parseInt(e.dataTransfer.getData("text/plain"), 10);
+      if (isNaN(srcCol) || srcCol === ci) return;
+      reorderColumn(idx, srcCol, ci);
+    });
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  t.rows.forEach(row => {
+    const r = document.createElement("tr");
+    vis.forEach(ci => {
+      const td = document.createElement("td");
+      const v = row[ci] !== undefined ? row[ci] : "";
+      td.textContent = v;
+      td.title = v;
+      td.dataset.col = ci;
+      r.appendChild(td);
+    });
+    tbody.appendChild(r);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+// 欄位重排（只改視圖，不動 md 原檔）
+function reorderColumn(idx, srcCol, targetCol) {
+  const vs = viewStates[idx];
+  const from = vs.colOrder.indexOf(srcCol);
+  const to = vs.colOrder.indexOf(targetCol);
+  if (from < 0 || to < 0 || from === to) return;
+  const [moved] = vs.colOrder.splice(from, 1);
+  vs.colOrder.splice(to, 0, moved);
+  rerenderSection(idx);
+}
+
+// 重建某個表格區（表格 + 卡片 + 過濾）
+function rerenderSection(idx) {
+  const t = tables[idx];
+  const section = dropZone.querySelector(`.table-section[data-idx="${idx}"]`);
+  const isCardView = section.querySelector(".card-view").classList.contains("show");
+  const wrap = section.querySelector(".table-wrap");
+  wrap.innerHTML = "";
+  wrap.appendChild(buildTable(t, idx));
+  const cards = section.querySelector(".card-view");
+  cards.innerHTML = "";
+  cards.appendChild(buildCards(t, idx));
+  // 保持視圖狀態
+  wrap.classList.toggle("hide", isCardView);
+  cards.classList.toggle("show", isCardView);
+  const info = section.querySelector(".table-rows");
+  const visCount = visibleCols(idx).length;
+  info.textContent = `${visCount} 欄 × ${t.rows.length} 行`;
+  applyFilter(searchBox.value);
+}
+
+// 欄位控制面板
+function buildColPanel(idx, panel) {
+  const t = tables[idx];
+  const vs = viewStates[idx];
+  panel.innerHTML = "";
+  const title = document.createElement("div");
+  title.className = "panel-title";
+  title.textContent = `欄位顯示（${visibleCols(idx).length}/${t.headers.length}）`;
+  panel.appendChild(title);
+  vs.colOrder.forEach(ci => {
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !vs.hidden.has(ci);
+    cb.addEventListener("change", () => {
+      if (cb.checked) vs.hidden.delete(ci);
+      else vs.hidden.add(ci);
+      rerenderSection(idx);
+      title.textContent = `欄位顯示（${visibleCols(idx).length}/${t.headers.length}）`;
+    });
+    const span = document.createElement("span");
+    span.textContent = t.headers[ci] !== undefined ? t.headers[ci] : `欄 ${ci + 1}`;
+    label.append(cb, span);
+    panel.appendChild(label);
+  });
+  const foot = document.createElement("div");
+  foot.className = "panel-foot";
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "全選";
+  allBtn.addEventListener("click", () => {
+    vs.hidden.clear();
+    rerenderSection(idx);
+    title.textContent = `欄位顯示（${visibleCols(idx).length}/${t.headers.length}）`;
+    buildColPanel(idx, panel);
+  });
+  const noneBtn = document.createElement("button");
+  noneBtn.textContent = "全不選";
+  noneBtn.addEventListener("click", () => {
+    vs.colOrder.forEach(c => vs.hidden.add(c));
+    rerenderSection(idx);
+    title.textContent = `欄位顯示（${visibleCols(idx).length}/${t.headers.length}）`;
+    buildColPanel(idx, panel);
+  });
+  foot.append(allBtn, noneBtn);
+  panel.appendChild(foot);
+}
+
+function buildCards(t, idx) {
+  const vis = visibleCols(idx);
+  const frag = document.createDocumentFragment();
+  t.rows.forEach(row => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.row = JSON.stringify(row);
+    const title = document.createElement("div");
+    title.className = "card-title";
+    const firstVis = vis[0] !== undefined ? vis[0] : 0;
+    title.textContent = row[firstVis] !== undefined && row[firstVis] !== "" ? row[firstVis] : "(無標題)";
+    card.appendChild(title);
+    vis.forEach((ci, vi) => {
+      if (vi === 0) return;
+      const h = t.headers[ci] !== undefined ? t.headers[ci] : `欄 ${ci + 1}`;
+      const v = row[ci] !== undefined ? row[ci] : "";
+      if (v === "") return;
+      const rowEl = document.createElement("div");
+      rowEl.className = "card-row";
+      const k = document.createElement("span");
+      k.className = "k";
+      k.textContent = h;
+      const val = document.createElement("span");
+      val.className = "v";
+      val.textContent = v;
+      val.title = v;
+      rowEl.append(k, val);
+      card.appendChild(rowEl);
+    });
+    frag.appendChild(card);
+  });
+  return frag;
+}
+
+function setView(idx, view, tableBtn, cardBtn) {
+  const section = dropZone.querySelector(`.table-section[data-idx="${idx}"]`);
+  const wrap = section.querySelector(".table-wrap");
+  const cards = section.querySelector(".card-view");
+  const isTable = view === "table";
+  wrap.classList.toggle("hide", !isTable);
+  cards.classList.toggle("show", !isTable);
+  tableBtn.classList.toggle("active", isTable);
+  cardBtn.classList.toggle("active", !isTable);
+}
+
+// ---------- 排序 ----------
+function sortTable(idx, col, th) {
+  const t = tables[idx];
+  const key = `${idx}`;
+  const cur = sortState[key];
+  let dir;
+  if (!cur || cur.col !== col) dir = "asc";
+  else if (cur.dir === "asc") dir = "desc";
+  else dir = null;
+
+  if (dir === null) {
+    // 還原原序
+    t.rows.sort((a, b) => a.__orig - b.__orig);
+    delete sortState[key];
+  } else {
+    if (!cur || cur.col !== col) {
+      t.rows.forEach((r, i) => { r.__orig = i; });
+    }
+    t.rows.sort((a, b) => {
+      const va = a[col] !== undefined ? a[col] : "";
+      const vb = b[col] !== undefined ? b[col] : "";
+      const na = parseFloat(va.replace(/[^0-9.\-]/g, ""));
+      const nb = parseFloat(vb.replace(/[^0-9.\-]/g, ""));
+      let cmp;
+      if (!isNaN(na) && !isNaN(nb) && va !== "" && vb !== "") cmp = na - nb;
+      else cmp = va.localeCompare(vb, "zh-Hant");
+      return dir === "asc" ? cmp : -cmp;
+    });
+    sortState[key] = { col, dir };
+  }
+
+  // 更新箭頭
+  const section = dropZone.querySelector(`.table-section[data-idx="${idx}"]`);
+  const ths = section.querySelectorAll("th");
+  ths.forEach(th2 => { th2.querySelector(".arrow").textContent = ""; });
+  if (dir) th.querySelector(".arrow").textContent = dir === "asc" ? "▲" : "▼";
+
+  // 重建 tbody
+  const table = section.querySelector("table.md-table");
+  const tbody = table.querySelector("tbody");
+  tbody.innerHTML = "";
+  const vis = visibleCols(idx);
+  t.rows.forEach(row => {
+    const r = document.createElement("tr");
+    vis.forEach(ci => {
+      const td = document.createElement("td");
+      const v = row[ci] !== undefined ? row[ci] : "";
+      td.textContent = v;
+      td.title = v;
+      td.dataset.col = ci;
+      r.appendChild(td);
+    });
+    tbody.appendChild(r);
+  });
+  applyFilter(searchBox.value);
+}
+
+// ---------- 欄寬拖拽 ----------
+function startResize(e, th) {
+  e.preventDefault();
+  e.stopPropagation();
+  th.draggable = false; // 拖寬期間關閉欄拖拽，避免搶事件
+  suppressClick = true; // 拖寬期間及結束後抑制 click，避免誤觸發排序
+  const startX = e.clientX;
+  const startW = th.offsetWidth;
+  const table = th.closest("table");
+  function onMove(ev) {
+    const w = Math.max(40, startW + (ev.clientX - startX));
+    th.style.width = w + "px";
+    th.style.minWidth = w + "px";
+  }
+  function onUp() {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    document.body.style.cursor = "";
+    th.draggable = true;
+    setTimeout(() => { suppressClick = false; }, 120);
+  }
+  document.body.style.cursor = "col-resize";
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+}
+
+// ---------- 表格顯示/隱藏 ----------
+tableBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  buildTablePanel();
+  tablePanel.classList.toggle("show");
+});
+document.addEventListener("click", e => {
+  if (!e.target.closest("#tablePanel") && e.target !== tableBtn) {
+    tablePanel.classList.remove("show");
+  }
+});
+
+function buildTablePanel() {
+  tablePanel.innerHTML = "";
+  const title = document.createElement("div");
+  title.className = "panel-title";
+  title.textContent = `表格顯示（${tables.length - hiddenTables.size}/${tables.length}）`;
+  tablePanel.appendChild(title);
+  tables.forEach((t, idx) => {
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !hiddenTables.has(idx);
+    cb.addEventListener("change", () => {
+      const sec = dropZone.querySelector(`.table-section[data-idx="${idx}"]`);
+      if (cb.checked) {
+        hiddenTables.delete(idx);
+        if (sec) sec.style.display = "";
+      } else {
+        hiddenTables.add(idx);
+        if (sec) sec.style.display = "none";
+      }
+      title.textContent = `表格顯示（${tables.length - hiddenTables.size}/${tables.length}）`;
+      updateStats();
+    });
+    const span = document.createElement("span");
+    span.textContent = `${t.name}（${t.rows.length} 行）`;
+    label.append(cb, span);
+    tablePanel.appendChild(label);
+  });
+  const foot = document.createElement("div");
+  foot.className = "panel-foot";
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "全選";
+  allBtn.addEventListener("click", () => {
+    hiddenTables.clear();
+    tables.forEach((_, idx) => {
+      const sec = dropZone.querySelector(`.table-section[data-idx="${idx}"]`);
+      if (sec) sec.style.display = "";
+    });
+    title.textContent = `表格顯示（${tables.length}/${tables.length}）`;
+    updateStats();
+    buildTablePanel();
+  });
+  const noneBtn = document.createElement("button");
+  noneBtn.textContent = "全不選";
+  noneBtn.addEventListener("click", () => {
+    hiddenTables = new Set(tables.map((_, idx) => idx));
+    tables.forEach((_, idx) => {
+      const sec = dropZone.querySelector(`.table-section[data-idx="${idx}"]`);
+      if (sec) sec.style.display = "none";
+    });
+    title.textContent = `表格顯示（0/${tables.length}）`;
+    updateStats();
+    buildTablePanel();
+  });
+  foot.append(allBtn, noneBtn);
+  tablePanel.appendChild(foot);
+}
+
+// ---------- 過濾（Notion 式） ----------
+searchBox.addEventListener("input", () => applyFilter(searchBox.value));
+searchScope.addEventListener("change", () => applyFilter(searchBox.value));
+
+function applyFilter(q) {
+  q = (q || "").trim().toLowerCase();
+  const scope = searchScope.value; // "" = 全部欄位
+  const sections = dropZone.querySelectorAll(".table-section");
+  sections.forEach((section, idx) => {
+    const rowsEl = section.querySelectorAll("tbody tr");
+    const colIdx = scope ? colIndexByName(idx, scope) : -1;
+    let visible = 0;
+    rowsEl.forEach(tr => {
+      let text;
+      if (colIdx >= 0) {
+        const td = tr.querySelector(`td[data-col="${colIdx}"]`);
+        text = td ? td.textContent.toLowerCase() : "";
+      } else {
+        text = tr.textContent.toLowerCase();
+      }
+      const show = q === "" || text.includes(q);
+      tr.style.display = show ? "" : "none";
+      if (show) visible++;
+    });
+    // 卡片視圖也過濾
+    const cards = section.querySelectorAll(".card");
+    let cardVisible = 0;
+    cards.forEach(c => {
+      const row = JSON.parse(c.dataset.row || "[]");
+      let text;
+      if (colIdx >= 0) {
+        text = (row[colIdx] !== undefined ? row[colIdx] : "").toString().toLowerCase();
+      } else {
+        text = row.join(" ").toLowerCase();
+      }
+      const show = q === "" || text.includes(q);
+      c.style.display = show ? "" : "none";
+      if (show) cardVisible++;
+    });
+    const info = section.querySelector(".table-rows");
+    const total = tables[idx].rows.length;
+    const visCount = visibleCols(idx).length;
+    info.textContent = q === ""
+      ? `${visCount} 欄 × ${total} 行`
+      : `${visCount} 欄 × ${visible}/${total} 行`;
+  });
+}
+
+// ---------- 凍結首欄 ----------
+freezeBtn.addEventListener("click", () => {
+  frozen = !frozen;
+  freezeBtn.style.background = frozen ? "var(--accent)" : "";
+  freezeBtn.style.color = frozen ? "#fff" : "";
+  document.querySelectorAll("table.md-table").forEach(t => {
+    t.classList.toggle("frozen-first", frozen);
+  });
+});
+
+initTheme();
+</script>
+</body>
+</html>
