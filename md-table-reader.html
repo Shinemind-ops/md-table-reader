@@ -33,13 +33,14 @@
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
+html { overflow: auto; }   /* 視口級滾動（主人 2026-08-17）：表格突破視口 → 瀏覽器視窗橫向滾動（中鍵 autoscroll） */
 body {
   font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
   background: var(--bg);
   color: var(--text);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  display: block;      /* block：子項溢出撐開視口滾動範圍（flex 會鎖死交叉軸寬度） */
+  width: auto;         /* 不要 max-content（會 = 內容最大寬爆炸）——表格溢出即可 */
+  overflow: visible;   /* body 不當滾動容器——滾動歸 html 視口級 */
 }
 header {
   display: flex;
@@ -50,6 +51,9 @@ header {
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
   flex-shrink: 0;
+  position: sticky;   /* 頁面滾動時 header 固定（主人 2026-08-17） */
+  top: 0;
+  z-index: 50;
 }
 header h1 {
   font-size: 16px;
@@ -93,7 +97,7 @@ button.primary:hover { background: var(--accent-dim); }
 #stats { font-size: 12px; color: var(--text-dim); margin-left: auto; white-space: nowrap; }
 main {
   flex: 1;
-  overflow-y: auto;
+  overflow: visible;   /* 不當滾動容器——垂直/水平滾動全歸視口級（主人 2026-08-17） */
   padding: 16px;
 }
 #dropZone {
@@ -141,15 +145,16 @@ main {
 .table-toolbar .spacer { flex: 1; }
 .view-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .table-wrap {
-  overflow: auto;
-  flex: 1;
+  overflow: visible;   /* 不吞滾動——表格溢出到視口級（主人 2026-08-17：不是容器內滾動） */
+  width: auto;         /* 不要 max-content（會 = 內容最大寬，100 萬 px 爆炸）——寬度撐滿，表格溢出即可 */
   position: relative;
 }
 table.md-table {
   border-collapse: separate;
   border-spacing: 0;
-  width: 100%;
-  table-layout: fixed;
+  width: 100%;          /* 初始填滿容器 */
+  min-width: 100%;
+  table-layout: fixed;  /* fixed：欄寬嚴格按 style.width（拖寬時 JS 設表格總寬 = 欄寬和，純加法） */
   font-size: 13px;
 }
 .md-table th {
@@ -421,6 +426,8 @@ function loadFile(file) {
     fileNameEl.textContent = "📄 " + file.name;
     tables = parseMarkdownTables(reader.result);
     renderAll();
+    // 延遲分配欄寬（等表格佈局完成——renderAll 時 dropZone 未佈局，clientWidth=0）
+    requestAnimationFrame(() => requestAnimationFrame(() => distributeExcess()));
     searchBox.disabled = false;
     searchScope.disabled = false;
     searchBox.value = "";
@@ -523,6 +530,7 @@ function isSeparatorRow(row) {
 // ---------- 渲染 ----------
 function renderAll() {
   dropZone.innerHTML = "";
+  document.body.style.minWidth = "";   // 重置拖寬撐開的 body（載入新檔）
   sortState = {};
   viewStates = [];
   hiddenTables.clear();
@@ -596,6 +604,25 @@ function renderAll() {
   });
   updateStats();
   applyFilter("");
+  distributeExcess();
+}
+
+// 把表格多餘寬度分配給欄 style（欄 style 總和 = 表格寬）——拖寬時純加法，右欄分毫未動（主人 2026-08-17）
+function distributeExcess() {
+  document.querySelectorAll(".md-table").forEach(tbl => {
+    const ths = [...tbl.querySelectorAll("th")].filter(t => t.style.display !== "none");
+    if (!ths.length) return;
+    const styleSum = ths.reduce((s, t) => {
+      const w = t.style.width;
+      return s + (w && w.endsWith("px") ? parseFloat(w) : 0);
+    }, 0);
+    const avail = tbl.clientWidth;
+    if (avail > styleSum && styleSum > 0) {
+      const last = ths[ths.length - 1];
+      const lastW = parseFloat(last.style.width) || 0;
+      last.style.width = (lastW + (avail - styleSum)) + "px";
+    }
+  });
 }
 
 function buildTable(t, idx) {
@@ -860,11 +887,24 @@ function startResize(e, th) {
   suppressClick = true; // 拖寬期間及結束後抑制 click，避免誤觸發排序
   const startX = e.clientX;
   const startW = th.offsetWidth;
-  const table = th.closest("table");
+  // 拖寬開始：解除 min-width 鎖（表格可突破容器）
+  const tbl = th.closest("table");
+  tbl.style.minWidth = "0";
   function onMove(ev) {
     const w = Math.max(40, startW + (ev.clientX - startX));
     th.style.width = w + "px";
     th.style.minWidth = w + "px";
+    // 表格總寬 = 所有欄 style.width 總和（fixed 嚴格分配，純加法——右欄分毫未動）
+    // 注意：不能讀 offsetWidth——fixed 表格中欄寬受表格寬影響，會正回饋爆炸（實測 100 萬 px）
+    const total = [...tbl.querySelectorAll("th")].reduce((s, t) => {
+        const sw = t.style.width;
+        return s + (sw && sw.endsWith("px") ? parseFloat(sw) : t.offsetWidth);
+    }, 0);
+    tbl.style.width = total + "px";
+    // 撐開容器 + body（overflow:visible 溢出可見但不撐開視口滾動範圍——必須設 body min-width）
+    const wwrap = tbl.closest(".table-wrap");
+    if (wwrap) wwrap.style.minWidth = total + "px";
+    document.body.style.minWidth = total + "px";
   }
   function onUp() {
     document.removeEventListener("mousemove", onMove);
