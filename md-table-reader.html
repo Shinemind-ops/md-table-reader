@@ -373,7 +373,8 @@ function visibleCols(idx) {
 function initViewState(t, idx) {
   viewStates[idx] = {
     colOrder: t.headers.map((_, i) => i),
-    hidden: new Set()
+    hidden: new Set(),
+    colWidths: {}   // 欄寬狀態（colIndex -> px）——拖欄排序重建時沿用，不洗牌（主人 2026-08-17）
   };
 }
 
@@ -609,7 +610,7 @@ function renderAll() {
 
 // 把表格多餘寬度分配給欄 style（欄 style 總和 = 表格寬）——拖寬時純加法，右欄分毫未動（主人 2026-08-17）
 function distributeExcess() {
-  document.querySelectorAll(".md-table").forEach(tbl => {
+  document.querySelectorAll(".md-table").forEach((tbl, ti) => {
     const ths = [...tbl.querySelectorAll("th")].filter(t => t.style.display !== "none");
     if (!ths.length) return;
     const styleSum = ths.reduce((s, t) => {
@@ -621,6 +622,17 @@ function distributeExcess() {
       const last = ths[ths.length - 1];
       const lastW = parseFloat(last.style.width) || 0;
       last.style.width = (lastW + (avail - styleSum)) + "px";
+    }
+    // 保存每欄實際寬度（colWidths）——拖欄排序重建時沿用，不洗牌
+    const sec = dropZone.querySelector(`.table-section[data-idx="${ti}"]`);
+    if (sec && viewStates[ti]) {
+      ths.forEach(t => {
+        const ci = parseInt(t.dataset.col, 10);
+        const sw = t.style.width;
+        if (!isNaN(ci) && sw && sw.endsWith("px")) {
+          viewStates[ti].colWidths[ci] = parseFloat(sw);
+        }
+      });
     }
   });
 }
@@ -640,8 +652,9 @@ function buildTable(t, idx) {
     th.dataset.pos = pos;
     th.textContent = h;
     th.title = h;
-    // 智慧欄寬：按表頭文字長度給初始權重（短欄窄、長欄寬）
-    const w = Math.min(220, Math.max(64, h.length * 15 + 26));
+    // 智慧欄寬：按表頭文字長度給初始權重（短欄窄、長欄寬）——但有保存值（閱讀者調過）則沿用，不洗牌
+    const savedW = viewStates[idx].colWidths[ci];
+    const w = savedW || Math.min(220, Math.max(64, h.length * 15 + 26));
     th.style.width = w + "px";
     const arrow = document.createElement("span");
     arrow.className = "arrow";
@@ -727,6 +740,21 @@ function rerenderSection(idx) {
   const info = section.querySelector(".table-rows");
   const visCount = visibleCols(idx).length;
   info.textContent = `${visCount} 欄 × ${t.rows.length} 行`;
+  // 恢復表格總寬（閱讀者拖寬過的狀態保持——排序不洗牌總寬）
+  const t2 = wrap.querySelector("table.md-table");
+  if (t2) {
+    const total2 = [...t2.querySelectorAll("th")].reduce((s, th2) => {
+      const sw = th2.style.width;
+      return s + (sw && sw.endsWith("px") ? parseFloat(sw) : 0);
+    }, 0);
+    t2.style.width = total2 + "px";
+    t2.style.minWidth = "0";
+    if (total2 > (parseInt(document.body.style.minWidth) || 0)) {
+      document.body.style.minWidth = (total2 + 40) + "px";
+      const ww = t2.closest(".table-wrap");
+      if (ww) ww.style.minWidth = (total2 + 40) + "px";
+    }
+  }
   applyFilter(searchBox.value);
 }
 
@@ -902,15 +930,23 @@ function startResize(e, th) {
     }, 0);
     tbl.style.width = total + "px";
     // 撐開容器 + body（overflow:visible 溢出可見但不撐開視口滾動範圍——必須設 body min-width）
+    // +40px 餘量：滾到最右時最右欄右緣不貼視口邊緣，resizer 才抓得到（主人 2026-08-17 缺憾）
     const wwrap = tbl.closest(".table-wrap");
-    if (wwrap) wwrap.style.minWidth = total + "px";
-    document.body.style.minWidth = total + "px";
+    if (wwrap) wwrap.style.minWidth = (total + 40) + "px";
+    document.body.style.minWidth = (total + 40) + "px";
   }
   function onUp() {
     document.removeEventListener("mousemove", onMove);
     document.removeEventListener("mouseup", onUp);
     document.body.style.cursor = "";
     th.draggable = true;
+    // 拖寬結束：保存目標欄新寬（排序重建沿用，不洗牌）
+    const ci = parseInt(th.dataset.col, 10);
+    const section = th.closest(".table-section");
+    const tIdx = section ? parseInt(section.dataset.idx, 10) : -1;
+    if (!isNaN(ci) && tIdx >= 0 && viewStates[tIdx]) {
+      viewStates[tIdx].colWidths[ci] = parseFloat(th.style.width) || th.offsetWidth;
+    }
     setTimeout(() => { suppressClick = false; }, 120);
   }
   document.body.style.cursor = "col-resize";
