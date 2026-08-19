@@ -11,7 +11,7 @@
 
 | 版本 | 檔案 | 說明 |
 |---|---|---|
-| **免安裝版（Windows x64）** | [MD表格閱讀器-免安裝-5.0.0.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/MD表格閱讀器-免安裝-5.0.0.exe) | Electron 打包，71MB——**圖片自然顯示**（開啟即有圖）、非 F5 重新整理更穩（有真實檔案路徑） |
+| **免安裝版（Windows x64）** | [MD-Table-Reader-Portable-5.0.0.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/MD-Table-Reader-Portable-5.0.0.exe) | Electron 打包，71MB——**圖片自然顯示**（開啟即有圖）、非 F5 重新整理更穩（有真實檔案路徑） |
 | **單檔 HTML** | [md-table-reader.html](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/md-table-reader.html) | 零安裝、雙擊即用、無依賴（瀏覽器版——相對路徑圖片用 📁 選目錄） |
 
 > 歷史版本：[v4.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v4.0) ｜ [v3.8](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v3.8)
