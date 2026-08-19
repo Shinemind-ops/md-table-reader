@@ -557,6 +557,7 @@ const tablePanel = document.getElementById("tablePanel");
 
 let tables = [];        // 解析出的所有表格 {name, headers, rows}
 let blocks = [];        // 解析出的完整區塊序列（含非表格內容——主人 2026-08-19 功能⑤）
+let currentFilePath = ""; // Electron 下知道 md 完整路徑（圖片自然解析用）
 let currentFile = "";
 let frozen = false;
 let sortState = {};     // 每個表格的排序狀態 {tableIdx: {col, dir}}
@@ -629,7 +630,15 @@ async function loadFromHandle(handle) {
 }
 
 document.getElementById("openBtn").addEventListener("click", async () => {
-  // 優先 File System Access API（拿 handle——重新整理需要）；不可用/取消則 fallback fileInput
+  // Electron 模式：dialog 回傳真實路徑 + 內容（圖片自然解析——主人 2026-08-19）
+  if (window.api && window.api.openMd) {
+    const res = await window.api.openMd();
+    if (res && !res.error) {
+      loadContent(res.content, res.name, res.filePath);
+    }
+    return;
+  }
+  // 瀏覽器 fallback
   if (window.showOpenFilePicker) {
     try {
       const [handle] = await window.showOpenFilePicker({
@@ -639,7 +648,6 @@ document.getElementById("openBtn").addEventListener("click", async () => {
       if (handle && handle.kind === "file") { await loadFromHandle(handle); return; }
     } catch (e) {
       if (e.name === "AbortError") return; // 用戶取消
-      // 其他錯誤 → fallback 舊方式
     }
   }
   fileInput.click();
@@ -667,7 +675,14 @@ fileInput.addEventListener("change", () => {
 });
 dropZone.addEventListener("drop", async e => {
   const f = e.dataTransfer.files[0];
-  // 優先拿 FileSystemFileHandle（Chromium——重新整理需要重讀）
+  // Electron：File.path 有真實路徑——自然解析圖片
+  if (f && f.path) {
+    currentHandle = null;
+    refreshBtn.disabled = false;
+    loadFile(f);
+    return;
+  }
+  // 瀏覽器：優先拿 FileSystemFileHandle（Chromium——重新整理需要重讀）
   let handle = null;
   try {
     if (e.dataTransfer.items && e.dataTransfer.items[0] && e.dataTransfer.items[0].getAsFileSystemHandle) {
@@ -685,6 +700,24 @@ dropZone.addEventListener("drop", async e => {
 
 // 非 F5 重新整理：重讀檔案最新內容，保留閱讀者權力（滾動/篩選/欄寬/排序/視圖）——主人 2026-08-19 功能③
 refreshBtn.addEventListener("click", async () => {
+  // Electron 模式：直接用路徑重讀（不用 handle）
+  if (window.api && window.api.readMd && currentFilePath) {
+    try {
+      const res = await window.api.readMd(currentFilePath);
+      if (!res) return;
+      const st = saveReaderState();
+      const doc = parseDocument(res.content);
+      tables = doc.tables;
+      blocks = doc.blocks;
+      renderAll();
+      restoreReaderState(st);
+      currentFile = res.name;
+      fileNameEl.textContent = "📄 " + res.name;
+      statsEl.textContent = tables.length + " 個表格";
+      updateStats();
+      return;
+    } catch (_) { return; }
+  }
   if (!currentHandle) return;
   try {
     const file = await currentHandle.getFile();
@@ -781,27 +814,33 @@ function restoreReaderState(st) {
   window.scrollTo(st.scrollX || 0, st.scrollY || 0);
 }
 
+function loadContent(content, name, filePath) {
+  currentFile = name;
+  currentFilePath = filePath || "";
+  fileNameEl.textContent = "📄 " + name;
+  const doc = parseDocument(content);
+  tables = doc.tables;
+  blocks = doc.blocks;
+  renderAll();
+  // 延遲分配欄寬（等表格佈局完成——renderAll 時 dropZone 未佈局，clientWidth=0）
+  requestAnimationFrame(() => requestAnimationFrame(() => distributeExcess()));
+  searchBox.disabled = false;
+  searchScope.disabled = false;
+  searchBox.value = "";
+  searchScope.value = "";
+  fillSearchScope();
+  dropZone.classList.add("has-file");
+  statsEl.textContent = `${tables.length} 個表格`;
+  updateStats();
+  imageDirHandle = null;   // 載入新檔——重置目錄 handle
+  refreshImageBtn();
+}
+
 function loadFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
-    currentFile = file.name;
-    fileNameEl.textContent = "📄 " + file.name;
-    const doc = parseDocument(reader.result);
-    tables = doc.tables;
-    blocks = doc.blocks;
-    renderAll();
-    // 延遲分配欄寬（等表格佈局完成——renderAll 時 dropZone 未佈局，clientWidth=0）
-    requestAnimationFrame(() => requestAnimationFrame(() => distributeExcess()));
-    searchBox.disabled = false;
-    searchScope.disabled = false;
-    searchBox.value = "";
-    searchScope.value = "";
-    fillSearchScope();
-    dropZone.classList.add("has-file");
-    statsEl.textContent = `${tables.length} 個表格`;
-    updateStats();
-    imageDirHandle = null;   // 載入新檔——重置目錄 handle
-    refreshImageBtn();
+    // Electron：File.path 有真實路徑（拖放也能自然解析圖片）
+    loadContent(reader.result, file.name, file.path || "");
   };
   reader.readAsText(file, "utf-8");
 }
@@ -963,6 +1002,11 @@ function renderAll() {
 
 // ---------- 非表格內容渲染（Obsidian/Trae 瀏覽模式式——主人 2026-08-19 功能⑤） ----------
 let imageDirHandle = null;   // 「📁 圖片」選的目錄 handle（session 內有效——主人 2026-08-19：對人不是代價）
+function mdDir(filePath) {
+  // 取檔案所在目錄（renderer 無 path 模組——字符串處理）
+  const idx = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
+  return idx >= 0 ? filePath.slice(0, idx) : filePath;
+}
 function isRelativePath(src) {
   const s = src.trim();
   if (/^https?:\/\//i.test(s)) return false;
@@ -1063,8 +1107,15 @@ function renderBlock(block) {
       };
       img.addEventListener("error", showFallback);
       if (isRelativePath(src)) {
-        // 相對路徑圖片——有目錄 handle 就讀，沒有就 fallback（主人 2026-08-19「📁 圖片」）
-        if (imageDirHandle) {
+        if (window.api && window.api.resolveImage && currentFilePath) {
+          // Electron：從 md 所在目錄解析（自然顯示——主人 2026-08-19）
+          const absPath = mdDir(currentFilePath) + "\\" + src.replace(/\//g, "\\");
+          window.api.resolveImage(absPath).then(dataUrl => {
+            if (dataUrl) img.src = dataUrl;
+            else showFallback();
+          });
+        } else if (imageDirHandle) {
+          // 瀏覽器：有目錄 handle 就讀
           resolveDirImage(src).then(blobUrl => {
             if (blobUrl) img.src = blobUrl;
             else showFallback();
@@ -1902,6 +1953,12 @@ applyNonTable();
 
 // ---------- 圖片目錄（主人 2026-08-19：「📁 圖片」——選 md 所在目錄，讓相對路徑圖片能顯示） ----------
 function refreshImageBtn() {
+  // Electron 下圖片自然顯示——📁 按鈕無用，隱藏（主人 2026-08-19）
+  if (window.api && window.api.resolveImage) {
+    imageBtn.style.display = "none";
+    return;
+  }
+  imageBtn.style.display = "";
   const hasRelImg = blocks.some(b => b.type === "img" && isRelativePath(b.src));
   imageBtn.disabled = !hasRelImg;
   imageBtn.textContent = imageDirHandle ? "📁 圖片✓" : "📁 圖片";

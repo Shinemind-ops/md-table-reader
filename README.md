@@ -1,54 +1,76 @@
-# MD Table Reader 📊
+# 📊 MD 表格閱讀器
 
-**Read markdown tables with an Excel/Notion-grade experience.**
+> **讀 md 檔案的表格，享受 Excel/Notion 數據庫級的閱讀體驗。**
+> Read markdown tables with an Excel/Notion-grade experience.
 
-A single-file HTML tool that turns the markdown tables in your `.md` files into a full-featured data grid — no install, no dependencies, double-click and go.
+![v5.0 截圖](docs/screenshot-v5.png)
 
-> 讀 md 檔案的表格，享受 Excel/Notion 數據庫級的閱讀體驗。單檔 HTML，零安裝，雙擊即用。
+**最新版本：v5.0.0（2026-08-19）** — 新增：篩選器、自動換行開關、非 F5 重新整理、彈出式卡片、非表格內容（含圖片）顯示、免安裝版（圖片自然顯示）
 
-![screenshot](docs/screenshot.png)
+## 📥 下載
 
-## Why? / 為什麼做這個
+| 版本 | 檔案 | 說明 |
+|---|---|---|
+| **免安裝版（Windows x64）** | [MD表格閱讀器-免安裝-5.0.0.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/MD表格閱讀器-免安裝-5.0.0.exe) | Electron 打包，71MB——**圖片自然顯示**（開啟即有圖）、非 F5 重新整理更穩（有真實檔案路徑） |
+| **單檔 HTML** | [md-table-reader.html](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/md-table-reader.html) | 零安裝、雙擊即用、無依賴（瀏覽器版——相對路徑圖片用 📁 選目錄） |
 
-Standard markdown renderers (Obsidian, VS Code preview, Typora, Trae…) squeeze wide tables into narrow columns — headers stack vertically, cells become tall and skinny, and a 16-column table becomes unreadable. This tool renders those tables like a spreadsheet: full-width, sortable, filterable, with full control over columns.
+> 歷史版本：[v4.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v4.0) ｜ [v3.8](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v3.8)
 
-> 一般 md 渲染器（Obsidian、VS Code 預覽、Typora…）會把寬表格壓縮成又高又瘦的窄欄，16 欄表格根本沒法讀。這個工具把表格當 Excel 渲染：全寬、可排序、可過濾、欄位全權在手。
+## ✨ 功能 / Features
 
-## Features / 功能
-
-| Feature | 說明 |
+| 功能 | 說明 |
 |---|---|
-| 📌 Frozen header / frozen first column | 凍結表頭 / 凍結首欄 — scroll without losing context |
-| ↔️ Column drag-resize | 拖欄線調整欄寬（不誤觸發其他事件） |
-| 🔀 Drag columns to reorder | 拖欄標題重排欄位（最左/最右/中間/第七，隨你） |
-| ⚙️ Column show/hide | ⚙ 欄位 — 勾選控制每欄顯示/隱藏，全選/全不選 |
-| ⚙️ Table show/hide | ⚙ 表格 — 多表格檔案中控制顯示哪些表格 |
-| 🔍 Global & column-scoped search | 全域搜尋 or 只搜某個欄的旗下內容 |
-| 🃏 Table view / Card view | 表格視圖 / Notion 式卡片視圖 |
-| 🌙 Dark / light theme | 深淺色主題（記住偏好） |
-| 📂 Drag & drop or open file | 拖放 / 選檔載入，支援多表格 |
+| 🔍 **篩選器（Notion 式）** | 按廠商/類型/任何欄位多條件篩選——「是」「不是」「包含」「是任一（A、B、C）」，多條件 AND |
+| ↔️ **自動換行開關** | 想換行就換行、想截斷就截斷（默認不換行，記住偏好） |
+| 🔄 **非 F5 重新整理** | 檔案被編輯後一鍵重讀——新內容立即反映，**閱讀者的權力不受挑釁**（滾動/篩選/欄寬/排序全保留） |
+| 🃏 **彈出式卡片** | 點任何一行彈出完整卡片——**含隱藏欄位**的完整資訊 |
+| 📄 **非表格內容（含圖片）** | 標題/引用/段落/列表/程式碼/分隔線/圖片全部渲染——Obsidian/Trae 式清晰排版，默認不顯示可切換 |
+| 🖼 **圖片自然顯示（免安裝版）** | exe 版開啟 md 即顯示同目錄圖片（fs 讀取）；HTML 版用 📁 選目錄 |
+| 📌 凍結表頭 / 凍結首欄 | 滾動不失上下文 |
+| ↔️ 欄寬拖拽 | 拖欄線調整欄寬（純加法，右欄分毫未動） |
+| 🔀 拖欄重排 | 拖欄標題重排欄位 |
+| ⚙️ 欄位顯示控制 | 每欄顯示/隱藏，全選/全不選 |
+| ⚙️ 表格顯示控制 | 多表格檔案中控制顯示哪些表格 |
+| 🔍 全域/分欄搜尋 | 搜全部欄位或指定欄位 |
+| 🃏 表格視圖 / 卡片視圖 | Notion 式雙視圖 |
+| 🌙 深/淺色主題 | 記住偏好 |
 
-## Quick start / 快速開始
+## 🤔 兩種版本怎麼選
 
-1. Download `md-table-reader.html`
-2. Double-click to open in any browser
-3. Drag a `.md` file into the window (or click "打開 md 檔")
+| | 單檔 HTML | 免安裝版（exe） |
+|---|---|---|
+| 安裝 | 零——雙擊即用 | 零——雙擊即用（portable） |
+| 體積 | 66KB | 71MB（內含 Chromium） |
+| 同目錄圖片 | 📁 選目錄後顯示 | **自然顯示** |
+| 非 F5 重新整理 | 需 File System Access（Chromium） | 有真實路徑——更穩 |
+| 適合 | 快速看表格、分享 | 日常主力、看含圖 md |
 
-That's it. Your file never leaves your machine — everything runs locally.
+## 🛠 開發 / Development
 
-> 下載 `md-table-reader.html` → 雙擊用瀏覽器打開 → 把 md 檔拖進去（或點「打開 md 檔」）。完成。檔案不出本機，一切本地運行。
+```
+# 免安裝版（Electron）
+cd electron
+npm install
+npm start          # 開發模式
+npm run dist       # 打包 portable exe → dist/
 
-## Tips / 小技巧
+# HTML 版
+# 直接編輯 md-table-reader.html（單檔，無依賴）
+```
 
-- Click a column header to sort (asc → desc → original). 點欄頭排序（升→降→原序）
-- Drag the column edge to resize. 拖欄線調寬
-- Drag the column header itself to reorder. 拖欄標題重排
-- Use "⚙ 欄位" to hide columns, "⚙ 表格" to hide tables. 用 ⚙ 欄位 / ⚙ 表格 控制顯示
+結構：
+```
+md-table-reader.html   # 單檔 HTML 版（瀏覽器雙擊即用）
+electron/
+  main.js              # Electron 主進程（選檔回傳路徑 + fs 讀圖片）
+  preload.js           # contextBridge 安全橋接
+  renderer.html        # UI（從 md-table-reader.html 同步）
+  package.json         # electron-builder 打包配置
+docs/
+  screenshot.png       # v4.0 截圖
+  screenshot-v5.png    # v5.0 截圖
+```
 
-## Privacy / 隱私
+## 📜 License
 
-100% offline. No network calls, no telemetry, no uploads — the app is a single static HTML file.
-
-## License
-
-MIT
+MIT — 自由使用、修改、散佈。

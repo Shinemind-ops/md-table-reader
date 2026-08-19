@@ -1,0 +1,9 @@
+# Electron
+node_modules/
+dist/
+dist/win-unpacked/
+
+# 暫存/系統
+*.tmp
+.DS_Store
+Thumbs.db

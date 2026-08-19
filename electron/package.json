@@ -1,0 +1,36 @@
+{
+  "name": "md-table-reader",
+  "version": "5.0.0",
+  "description": "MD 表格閱讀器 — 免安裝版（圖片自然顯示）",
+  "main": "main.js",
+  "author": "Shinemind",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^31.7.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.shinemind.mdtable",
+    "productName": "MD表格閱讀器",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.html"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "MD表格閱讀器-免安裝-${version}.${ext}"
+    }
+  }
+}
