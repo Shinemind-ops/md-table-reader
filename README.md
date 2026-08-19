@@ -1,22 +1,94 @@
-# 📊 MD 表格閱讀器
+# 📊 MD Table Reader
 
-> **讀 md 檔案的表格，享受 Excel/Notion 數據庫級的閱讀體驗。**
-> Read markdown tables with an Excel/Notion-grade experience.
+> **Read markdown tables with an Excel/Notion-grade experience.**
+> 讀 md 檔案的表格，享受 Excel/Notion 數據庫級的閱讀體驗。
 
-![v5.0 截圖](docs/screenshot-v5.png)
+![v5.0 screenshot](docs/screenshot-v5.png)
 
-**最新版本：v5.0.0（2026-08-19）** — 新增：篩選器、自動換行開關、非 F5 重新整理、彈出式卡片、非表格內容（含圖片）顯示、免安裝版（圖片自然顯示）
+**Latest: v5.0.0 (2026-08-19)** — Filter, wrap toggle, non-F5 refresh, popup cards, non-table content (with images), portable build (natural image rendering).
+
+## 📥 Download
+
+| Version | File | Notes |
+|---|---|---|
+| **Portable (Windows x64)** | [MD-Table-Reader-Portable-5.0.0.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/MD-Table-Reader-Portable-5.0.0.exe) | Electron, 71MB — **images render natively** (knows the file path), more stable non-F5 refresh |
+| **Single-file HTML** | [md-table-reader.html](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/md-table-reader.html) | Zero install, double-click to use, no dependencies (browser build — relative images via 📁 directory picker) |
+
+> Older versions: [v4.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v4.0) ｜ [v3.8 (commit)](https://github.com/Shinemind-ops/md-table-reader/commit/70cc240)
+
+## ✨ Features
+
+| Feature | Description |
+|---|---|
+| 🔍 **Notion-style filter** | Multi-condition filtering on any column — "is", "is not", "contains", "is any of (A、B、C)", AND across conditions |
+| ↔️ **Wrap toggle** | Wrap long cells or truncate them — your call (off by default, remembers preference) |
+| 🔄 **Non-F5 refresh** | Re-read the file after edits — new content appears instantly, **reader's state is untouched** (scroll/filter/widths/sort all preserved) |
+| 🃏 **Popup cards** | Click any row for a full card — **including hidden columns** |
+| 📄 **Non-table content (with images)** | Headings/quotes/paragraphs/lists/code/hr/images — Obsidian/Trae-grade typography, off by default |
+| 🖼 **Native image rendering (portable)** | exe reads same-directory images automatically (fs access); HTML build uses 📁 directory picker |
+| 📌 Frozen header / first column | Keep context while scrolling |
+| ↔️ Column drag-resize | Pure addition — right column never moves |
+| 🔀 Drag columns to reorder | Rearrange columns by dragging headers |
+| ⚙️ Column show/hide | Per-column visibility, select all / none |
+| ⚙️ Table show/hide | Show/hide individual tables in multi-table files |
+| 🔍 Global & column-scoped search | Search all columns or a specific one |
+| 🃏 Table view / Card view | Notion-style dual views |
+| 🌙 Dark / light theme | Remembers preference |
+
+## 🤔 Which build to choose?
+
+| | Single-file HTML | Portable (exe) |
+|---|---|---|
+| Install | Zero — double-click | Zero — double-click (portable) |
+| Size | 66KB | 71MB (bundled Chromium) |
+| Same-directory images | 📁 picker required | **Native** |
+| Non-F5 refresh | File System Access (Chromium) | Real file path — more robust |
+| Best for | Quick reads, sharing | Daily driver, image-heavy docs |
+
+## 🛠 Development
+
+```
+# Portable (Electron)
+cd electron
+npm install
+npm start          # dev mode
+npm run dist       # build portable exe → dist/
+
+# HTML version
+# Edit md-table-reader.html directly (single file, no dependencies)
+```
+
+Structure:
+```
+md-table-reader.html   # Single-file HTML (double-click to use)
+electron/
+  main.js              # Electron main (file dialog returns path + fs image read)
+  preload.js           # contextBridge secure API
+  renderer.html        # UI (synced from md-table-reader.html)
+  package.json         # electron-builder config
+docs/
+  screenshot.png       # v4.0 screenshot
+  screenshot-v5.png    # v5.0 screenshot
+```
+
+## 📜 License
+
+MIT — free to use, modify, distribute.
+
+---
+
+# 中文版說明（中文使用者看這裡）
 
 ## 📥 下載
 
 | 版本 | 檔案 | 說明 |
 |---|---|---|
-| **免安裝版（Windows x64）** | [MD-Table-Reader-Portable-5.0.0.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/MD-Table-Reader-Portable-5.0.0.exe) | Electron 打包，71MB——**圖片自然顯示**（開啟即有圖）、非 F5 重新整理更穩（有真實檔案路徑） |
+| **免安裝版（Windows x64）** | [MD-Table-Reader-Portable-5.0.0.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/MD-Table-Reader-Portable-5.0.0.exe) | Electron 打包，71MB——**圖片自然顯示**（開啟即有圖）、非 F5 重新整理更穩 |
 | **單檔 HTML** | [md-table-reader.html](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/md-table-reader.html) | 零安裝、雙擊即用、無依賴（瀏覽器版——相對路徑圖片用 📁 選目錄） |
 
 > 歷史版本：[v4.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v4.0) ｜ [v3.8（commit）](https://github.com/Shinemind-ops/md-table-reader/commit/70cc240)
 
-## ✨ 功能 / Features
+## ✨ 功能
 
 | 功能 | 說明 |
 |---|---|
@@ -45,7 +117,7 @@
 | 非 F5 重新整理 | 需 File System Access（Chromium） | 有真實路徑——更穩 |
 | 適合 | 快速看表格、分享 | 日常主力、看含圖 md |
 
-## 🛠 開發 / Development
+## 🛠 開發
 
 ```
 # 免安裝版（Electron）
