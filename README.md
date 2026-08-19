@@ -5,16 +5,16 @@
 
 ![v5.0 screenshot](docs/screenshot-v5.png)
 
-**Latest: v5.0.0 (2026-08-19)** — Filter, wrap toggle, non-F5 refresh, popup cards, non-table content (with images), portable build (natural image rendering).
+**Latest: v5.0.1 (2026-08-19)** — 欄標題置中 — Filter, wrap toggle, non-F5 refresh, popup cards, non-table content (with images), portable build (natural image rendering).
 
 ## 📥 Download
 
 | Version | File | Notes |
 |---|---|---|
-| **Portable (Windows x64)** | [MD-Table-Reader-Portable-5.0.0.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/MD-Table-Reader-Portable-5.0.0.exe) | Electron, 71MB — **images render natively** (knows the file path), more stable non-F5 refresh |
-| **Single-file HTML** | [md-table-reader.html](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/md-table-reader.html) | Zero install, double-click to use, no dependencies (browser build — relative images via 📁 directory picker) |
+| **Portable (Windows x64)** | [MD-Table-Reader-Portable-5.0.1.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.1/MD-Table-Reader-Portable-5.0.1.exe) | Electron, 71MB — **images render natively** (knows the file path), more stable non-F5 refresh |
+| **Single-file HTML** | [md-table-reader.html](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.1/md-table-reader.html) | Zero install, double-click to use, no dependencies (browser build — relative images via 📁 directory picker) |
 
-> Older versions: [v4.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v4.0) ｜ [v3.8 (commit)](https://github.com/Shinemind-ops/md-table-reader/commit/70cc240)
+> Older versions: [v5.0.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v5.0.0) ｜ [v4.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v4.0) ｜ [v3.8 (commit)](https://github.com/Shinemind-ops/md-table-reader/commit/70cc240)
 
 ## ✨ Features
 
@@ -83,10 +83,10 @@ MIT — free to use, modify, distribute.
 
 | 版本 | 檔案 | 說明 |
 |---|---|---|
-| **免安裝版（Windows x64）** | [MD-Table-Reader-Portable-5.0.0.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/MD-Table-Reader-Portable-5.0.0.exe) | Electron 打包，71MB——**圖片自然顯示**（開啟即有圖）、非 F5 重新整理更穩 |
-| **單檔 HTML** | [md-table-reader.html](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.0/md-table-reader.html) | 零安裝、雙擊即用、無依賴（瀏覽器版——相對路徑圖片用 📁 選目錄） |
+| **免安裝版（Windows x64）** | [MD-Table-Reader-Portable-5.0.1.exe](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.1/MD-Table-Reader-Portable-5.0.1.exe) | Electron 打包，71MB——**圖片自然顯示**（開啟即有圖）、非 F5 重新整理更穩 |
+| **單檔 HTML** | [md-table-reader.html](https://github.com/Shinemind-ops/md-table-reader/releases/download/v5.0.1/md-table-reader.html) | 零安裝、雙擊即用、無依賴（瀏覽器版——相對路徑圖片用 📁 選目錄） |
 
-> 歷史版本：[v4.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v4.0) ｜ [v3.8（commit）](https://github.com/Shinemind-ops/md-table-reader/commit/70cc240)
+> 歷史版本：[v5.0.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v5.0.0) ｜ [v4.0](https://github.com/Shinemind-ops/md-table-reader/releases/tag/v4.0) ｜ [v3.8（commit）](https://github.com/Shinemind-ops/md-table-reader/commit/70cc240)
 
 ## ✨ 功能
 
